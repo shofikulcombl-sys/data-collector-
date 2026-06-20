@@ -28,9 +28,11 @@ jobs:
         run: |
           python scraper.py
 
-      - name: Instant Self Dispatches Restart Trigger
+      - name: Wait for 1 Minute and Restart Loop
         if: always()
         run: |
+          echo "Waiting for 60 seconds before triggering the next 5MB loop..."
+          sleep 60
           curl -X POST \
             -H "Authorization: token ${{ secrets.GH_PAT_TOKEN }}" \
             -H "Accept: application/vnd.github.v3+json" \
