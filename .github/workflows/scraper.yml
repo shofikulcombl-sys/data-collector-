@@ -34,5 +34,5 @@ jobs:
           curl -X POST \
             -H "Authorization: token ${{ secrets.GH_PAT_TOKEN }}" \
             -H "Accept: application/vnd.github.v3+json" \
-            https://github.com{{ github.repository }}/actions/workflows/scraper.yml/dispatches \
+            https://github.com/${{ github.repository }}/actions/workflows/scraper.yml/dispatches \
             -d '{"ref":"main"}'
