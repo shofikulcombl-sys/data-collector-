@@ -2,20 +2,29 @@ name: Continuous 100MB Scraper
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 * * * *' # প্রতি ঘণ্টায় একবার ট্রিপল রান নিশ্চিত করতে
+    - cron: '0 * * * *'
 
 jobs:
   scrape:
     runs-on: ubuntu-latest
-    timeout-minutes: 360 # সর্বোচ্চ ৬ ঘণ্টা চলবে
-    permissions: { contents: write }
+    timeout-minutes: 360
+    permissions: { contents: write } # এটি মাস্ট, নাহলে কমিট হবে না
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
+      - name: Setup Python
+        uses: actions/setup-python@v4
         with: { python-version: '3.9' }
       - run: pip install requests beautifulsoup4 huggingface_hub lxml
       
-      - name: Run Persistent Scraper
+      - name: Run Scraper
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: python scraper.py
+
+      - name: Push Metadata Log
+        run: |
+          git config --global user.name "GitHub Action"
+          git config --global user.email "action@github.com"
+          git add metadata_log.txt
+          git commit -m "Auto-update metadata [skip ci]" || echo "No changes"
+          git push
