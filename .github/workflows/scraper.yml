@@ -1,40 +1,21 @@
-name: Parallel Multi-Layer Scraper Loop
-
+name: Continuous 100MB Scraper
 on:
-  schedule:
-    - cron: '*/5 * * * *'
   workflow_dispatch:
+  schedule:
+    - cron: '0 * * * *' # প্রতি ঘণ্টায় একবার ট্রিপল রান নিশ্চিত করতে
 
 jobs:
-  parallel-scrape:
+  scrape:
     runs-on: ubuntu-latest
+    timeout-minutes: 360 # সর্বোচ্চ ৬ ঘণ্টা চলবে
+    permissions: { contents: write }
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Setup Python Runtime
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.10'
-
-      - name: Install Libraries
-        run: |
-          pip install requests beautifulsoup4 huggingface_hub
-
-      - name: Run Multi-Processing Engine
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with: { python-version: '3.9' }
+      - run: pip install requests beautifulsoup4 huggingface_hub lxml
+      
+      - name: Run Persistent Scraper
         env:
-          TARGET_URL: "https://archive.org"
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        run: |
-          python scraper.py
-
-      - name: Wait for 1 Minute and Restart Loop
-        if: always()
-        run: |
-          echo "Waiting for 60 seconds before triggering the next 5MB loop..."
-          sleep 60
-          curl -X POST \
-            -H "Authorization: token ${{ secrets.GH_PAT_TOKEN }}" \
-            -H "Accept: application/vnd.github.v3+json" \
-            https://github.com/${{ github.repository }}/actions/workflows/scraper.yml/dispatches \
-            -d '{"ref":"main"}'
+        run: python scraper.py
