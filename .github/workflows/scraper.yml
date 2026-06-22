@@ -2,7 +2,7 @@ name: Advance Autonomous Transactional Scraper
 on:
   workflow_dispatch:
   schedule:
-    - cron: '*/10 * * * *' # প্রতি ১০ মিনিট পর পর পাহারাদারের মতো চেক করবে কোনো রান বন্ধ আছে কি না
+    - cron: '*/5 * * * *' # ব্যাকআপ ট্রিগার
 
 jobs:
   scrape:
@@ -11,7 +11,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
         with:
-          fetch-depth: 0 # সম্পূর্ণ গিট হিস্ট্রি নেওয়ার জন্য যাতে পুশ রিজেক্ট না হয়
+          fetch-depth: 0
 
       - name: Setup Python environment
         uses: actions/setup-python@v4
@@ -20,14 +20,26 @@ jobs:
       - name: Install Critical Dependencies
         run: pip install requests beautifulsoup4 huggingface_hub lxml
 
-      - name: Configure Git Bot Security
-        run: |
-          git config --global user.name "Autonomous-Scraper-Bot"
-          git config --global user.email "scraper-bot@github.com"
-          git config --global pull.rebase true # কনফ্লিক্ট এড়ানোর জন্য সেফটি নেট
-
       - name: Execute Fail-Safe Scraper Pipeline
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           TARGET_URL: ${{ secrets.TARGET_URL }}
         run: python scraper.py
+
+      - name: Safe Push Metadata Log
+        if: always() # স্ক্রিপ্ট ফেইল করলেও যেন রোলব্যাক করা মেটাডেটা পুশ হয়
+        run: |
+          git config --global user.name "Autonomous-Scraper-Bot"
+          git config --global user.email "scraper-bot@github.com"
+          git add metadata_log.txt
+          git commit -m "Sync Metadata Log [skip ci]" || echo "No changes"
+          git push
+
+      - name: Trigger Next Cycle Immediately (Auto-Restart)
+        if: success() # এই রানটি সফল হলে পরের রানটি স্বয়ংক্রিয়ভাবে ট্রিগার করবে
+        run: |
+          curl -X POST \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/${{ github.repository }}/actions/workflows/main.yml/dispatches \
+            -d '{"ref":"main"}'
